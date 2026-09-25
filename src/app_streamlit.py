@@ -17,18 +17,19 @@ from agent import run_agent
 st.set_page_config(page_title="DCS RAG Agent", page_icon="🤖", layout="centered")
 
 st.title("🤖 DCS RAG Agent")
-st.caption("LangGraph · Tools · Memory · Multi-step · DcsProducer®")
+st.caption("LangGraph · Tools · Memory (checkpointer) · Multi-step · LAB · DcsProducer®")
 
 with st.sidebar:
     st.header("Controles")
+    thread_id = st.text_input("Thread ID (memória)", value="default")
+    show_traj = st.checkbox("Mostrar trajetória", value=False)
     st.markdown(
         """
-        **Ferramentas disponíveis**
-        - `search_knowledge_base` — busca RAG
+        **Ferramentas**
+        - `search_knowledge_base` — Chroma real (ou mock)
         - `calculate` — cálculos simples
 
-        **LLM**  
-        Configure `LLM_PROVIDER` no `.env`
+        **LLM** — configure `LLM_PROVIDER` no `.env`
         """
     )
 
@@ -39,9 +40,15 @@ question = st.chat_input("Pergunte ao agente...")
 
 if question:
     st.session_state.history.append(("user", question))
-    with st.spinner("Agente pensando + usando tools..."):
+    with st.spinner("Agente pensando + tools + memória..."):
         try:
-            answer = run_agent(question)
+            if show_traj:
+                out = run_agent(question, thread_id=thread_id, return_trajectory=True)
+                answer = out["answer"]
+                traj_info = f"\n\n_Trajetória: {out['n_messages']} msgs · tools={out['used_tools']}_"
+                answer = answer + traj_info
+            else:
+                answer = run_agent(question, thread_id=thread_id)
         except Exception as e:
             answer = f"Erro: {e}"
     st.session_state.history.append(("assistant", answer))
@@ -52,6 +59,7 @@ for role, text in st.session_state.history:
 
 st.markdown("---")
 st.markdown(
-    "<small>© DcsProducer® · <a href='https://github.com/producerdcs-cpu/dcs-rag-agent'>GitHub</a></small>",
+    "<small>© DcsProducer® · LAB · "
+    "<a href='https://github.com/producerdcs-cpu/dcs-rag-agent'>GitHub</a></small>",
     unsafe_allow_html=True,
 )
